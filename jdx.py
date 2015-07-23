@@ -26,12 +26,11 @@ def try_str_to_num(string):
         
 
 def line_splitter(data_line):
-    """An alias of data_line.split()
+    """A line splitter for JDX data lines. str -> [columns]
 
-    Warning: This function is not entirely correct due to complications with negative signs."
+    Splits along whitespaces as well as minus signs.
     """
-    # TODO: Splits line correctly if minus signs are used in place of whitespace
-    return data_line.split()
+    return data_line.replace("-", " -").split()
 
 def xyy_line_parser(data_line, deltax):
     """JDX data line in the (X++(Y..Y)) format -> x, y in np.array"""
