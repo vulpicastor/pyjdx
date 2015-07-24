@@ -8,6 +8,9 @@ import numpy as np
 XYDATA_MAP = {"(X++(Y..Y))": "xyy",
               "(XY..XY)": "xyxy"}
 
+class JdxParserError(Exception):
+    pass
+
 def sanity_check(jdx_dict):
     # TODO: Check obtained data with header max & min of x & y.
     return True
@@ -24,6 +27,9 @@ def try_str_to_num(string):
     except:
         raise TypeError("Unknown error while trying to convert string into number.")
 
+def deltax(firstx, lastx, npoints, **kwargs):
+    """-> (lastx - firstx) / (npoints - 1)"""
+    return (lastx - firstx) / (npoints - 1)
 
 def line_splitter(data_line):
     """A line splitter for JDX data lines. str -> [columns]
@@ -40,7 +46,7 @@ def line_splitter(data_line):
 def xyy_line_parser(data_line, deltax):
     """JDX data line in the (X++(Y..Y)) format -> x, y in np.array"""
     xyy = line_splitter(data_line)
-    x_start, y = try_str_to_num(xyy[0]), np.array(xyy[1:], dtype="float")
+    x_start, y = float(xyy[0]), np.array(xyy[1:], dtype="float")
     x = np.array([x_start + deltax * i for i, _ in enumerate(y)])
     return x, y
 
@@ -51,7 +57,7 @@ def data_parser(data_lines, data_type, **kwargs):
     if data_type == "xyy":
         xs, ys = [], []
         for line in data_lines:
-            x, y = xyy_line_parser(line, kwargs["deltax"])
+            x, y = xyy_line_parser(line, deltax(**kwargs))
             xs.append(x)
             ys.append(y)
         return {"x": np.concatenate(xs), "y": np.concatenate(ys)}
