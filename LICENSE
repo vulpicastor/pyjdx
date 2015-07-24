@@ -1,5 +1,6 @@
 The MIT License (MIT)
 
+pyjdx - a Python library to parse JCAMP-DX spectral data files
 Copyright (c) 2015 Lizhou Sha
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
