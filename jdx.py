@@ -23,19 +23,24 @@ def try_str_to_num(string):
             return string
     except:
         raise TypeError("Unknown error while trying to convert string into number.")
-        
+
 
 def line_splitter(data_line):
     """A line splitter for JDX data lines. str -> [columns]
 
     Splits along whitespaces as well as minus signs.
     """
-    return data_line.replace("-", " -").split()
+    # Temporarily replace floating numbers of the form 1.234E-23
+    no_float = data_line.lower().replace("e-", "e~").replace("e+", "e@")
+    # All remaining + or - signs may be delimiters
+    split_line = no_float.replace("-", " -").replace("+", " +").split()
+    # Recover floating numbers
+    return [i.replace("e~", "e-").replace("e@", "e+") for i in split_line]
 
 def xyy_line_parser(data_line, deltax):
     """JDX data line in the (X++(Y..Y)) format -> x, y in np.array"""
-    xyy = np.array(line_splitter(data_line), dtype="float")
-    x_start, y = xyy[0], xyy[1:]
+    xyy = line_splitter(data_line)
+    x_start, y = try_str_to_num(xyy[0]), np.array(xyy[1:], dtype="float")
     x = np.array([x_start + deltax * i for i, _ in enumerate(y)])
     return x, y
 
