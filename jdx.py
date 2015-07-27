@@ -82,7 +82,7 @@ def comment_stripper(header_line):
     else:
         return split_line[0].strip(), ""
 
-def jdx_reader(filename):
+def jdx_reader(filename, transform_data=True):
     """Opens a JCAMP-DX file and returns its contents in a dictionary."""
 
     # Initialization
@@ -117,7 +117,8 @@ def jdx_reader(filename):
 
     data_type = DATATYPE_MAP[jdx_dict[data_start]]
     jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
-    jdx_dict.update(data_transformer(**jdx_dict))
+    if transform_data:
+        jdx_dict.update(data_transformer(**jdx_dict))
     sanity_check(jdx_dict)
 
     return jdx_dict
