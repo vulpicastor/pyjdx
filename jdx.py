@@ -6,7 +6,12 @@ from __future__ import division, print_function
 import numpy as np
 
 XYDATA_MAP = {"(X++(Y..Y))": "xyy",
-              "(XY..XY)": "xyxy"}
+              "(XY..XY)": "xy",
+              "(XYZ..XYZ)": "xyz",
+              "(XYA)": "xya",
+              "(XYWA)": "xywa"}
+
+DATA_START = {"xydata", "xypoint", "peak table", "radata"}
 
 class JdxParserError(Exception):
     pass
@@ -16,14 +21,11 @@ def sanity_check(jdx_dict):
     return True
 
 def try_str_to_num(string):
-    """string -> number (int or float)"""
+    """string -> float if is_number else string"""
     try:
-        return int(string)
+        return float(string)
     except ValueError:
-        try:
-            return float(string)
-        except ValueError:
-            return string
+        return string
     except:
         raise TypeError("Unknown error while trying to convert string into number.")
 
@@ -68,6 +70,14 @@ def data_transformer(x, y, xfactor, yfactor, **kwargs):
     """Multiplies x or y data by their corresponding factor."""
     return {"x": x * xfactor, "y": y * yfactor}
 
+def comment_stripper(header_line):
+    """-> header, comment
+
+    header=="" indicates a full comment line.
+    """
+    header, comment = header_line.split("$$", 1)
+    return header, comment.strip()
+
 def jdx_reader(filename):
     """Opens a JCAMP-DX file and returns its contents in a dictionary."""
 
@@ -84,7 +94,7 @@ def jdx_reader(filename):
                 # Enter header key & value into jdx_dict
                 key, value = line.lstrip("##").split("=", 1)
                 jdx_dict[key.lower()] = try_str_to_num(value.rstrip("\n"))
-                if key.lower() == "xydata":
+                if key.lower() in DATA_START:
                     data_start = True
             elif not data_start:
                 continue
