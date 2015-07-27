@@ -5,11 +5,11 @@
 from __future__ import division, print_function
 import numpy as np
 
-XYDATA_MAP = {"(X++(Y..Y))": "xyy",
-              "(XY..XY)": "xy",
-              "(XYZ..XYZ)": "xyz",
-              "(XYA)": "xya",
-              "(XYWA)": "xywa"}
+DATATYPE_MAP = {"(X++(Y..Y))": "xyy",
+                "(XY..XY)": "xy",
+                "(XYZ..XYZ)": "xyz",
+                "(XYA)": "xya",
+                "(XYWA)": "xywa"}
 
 DATA_START = {"xydata", "xypoint", "peak table", "radata"}
 
@@ -64,7 +64,7 @@ def data_parser(data_lines, data_type, **kwargs):
             ys.append(y)
         return {"x": np.concatenate(xs), "y": np.concatenate(ys)}
     else:
-        raise Exception("JCAMP-DX data type {0} not supported".format(data_type))
+        raise JdxParserError("JCAMP-DX data type {0} not supported".format(data_type))
 
 def data_transformer(x, y, xfactor, yfactor, **kwargs):
     """Multiplies x or y data by their corresponding factor."""
@@ -89,10 +89,10 @@ def jdx_reader(filename):
     jdx_dict = {"comments":""}
     x = []
     y = []
+    data_start = ""
     data_lines = []
 
     with open(filename) as jdx_file:
-        data_start = False
         for line in jdx_file:
             header, comment = comment_stripper(line)
             if comment:
@@ -102,22 +102,22 @@ def jdx_reader(filename):
             elif header.startswith("##"):
                 # Enter header key & value into jdx_dict
                 key, value = header.lstrip("##").split("=", 1)
-                jdx_dict[key.lower()] = try_str_to_num(value.rstrip("\n"))
-                if key.lower() in DATA_START:
-                    data_start = True
+                key = key.lower()
+                jdx_dict[key] = try_str_to_num(value)
+                if key in DATA_START:
+                    data_start = key
             elif not data_start:
-                continue
+                jdx_dict[key] += "\n" + header
             elif data_start:
                 # Store all the data lines for later processing
                 data_lines.append(header)
             else:
                 # Just in case, so that I know the code is failing
-                raise Exception("Uncaught case while parsing JDX file.")
+                raise JdxParserError("Uncaught case while parsing JDX file.")
 
-    data_type = XYDATA_MAP[jdx_dict["xydata"]]
+    data_type = DATATYPE_MAP[jdx_dict[data_start]]
     jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
     jdx_dict.update(data_transformer(**jdx_dict))
     sanity_check(jdx_dict)
 
     return jdx_dict
-
