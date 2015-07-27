@@ -71,18 +71,22 @@ def data_transformer(x, y, xfactor, yfactor, **kwargs):
     return {"x": x * xfactor, "y": y * yfactor}
 
 def comment_stripper(header_line):
-    """-> header, comment
+    """-> header.strip(), comment.strip()
 
     header=="" indicates a full comment line.
     """
-    header, comment = header_line.split("$$", 1)
-    return header, comment.strip()
+    split_line = header_line.split("$$", 1)
+    if len(split_line) > 1:
+        header, comment = split_line
+        return header.strip(), comment.strip()
+    else:
+        return split_line[0].strip(), ""
 
 def jdx_reader(filename):
     """Opens a JCAMP-DX file and returns its contents in a dictionary."""
 
     # Initialization
-    jdx_dict = {}
+    jdx_dict = {"comments":""}
     x = []
     y = []
     data_lines = []
@@ -90,9 +94,14 @@ def jdx_reader(filename):
     with open(filename) as jdx_file:
         data_start = False
         for line in jdx_file:
-            if line.startswith("##"):
+            header, comment = comment_stripper(line)
+            if comment:
+                jdx_dict["comments"] += comment + "\n"
+            if not header:
+                continue
+            elif header.startswith("##"):
                 # Enter header key & value into jdx_dict
-                key, value = line.lstrip("##").split("=", 1)
+                key, value = header.lstrip("##").split("=", 1)
                 jdx_dict[key.lower()] = try_str_to_num(value.rstrip("\n"))
                 if key.lower() in DATA_START:
                     data_start = True
@@ -100,7 +109,7 @@ def jdx_reader(filename):
                 continue
             elif data_start:
                 # Store all the data lines for later processing
-                data_lines.append(line)
+                data_lines.append(header)
             else:
                 # Just in case, so that I know the code is failing
                 raise Exception("Uncaught case while parsing JDX file.")
