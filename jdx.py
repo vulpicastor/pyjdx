@@ -11,7 +11,7 @@ DATATYPE_MAP = {"(X++(Y..Y))": "xyy",
                 "(XYA)": "xya",
                 "(XYWA)": "xywa"}
 
-DATA_START = {"xydata", "xypoint", "peak table", "radata"}
+DATA_START_HEADERS = {"xydata", "xypoint", "peak table", "radata"}
 
 class JdxParserError(Exception):
     pass
@@ -70,17 +70,22 @@ def data_transformer(x, y, xfactor, yfactor, **kwargs):
     """Multiplies x or y data by their corresponding factor."""
     return {"x": x * xfactor, "y": y * yfactor}
 
-def comment_stripper(header_line):
+def comment_stripper(jdx_line):
     """-> header.strip(), comment.strip()
 
     header=="" indicates a full comment line.
     """
-    split_line = header_line.split("$$", 1)
+    split_line = jdx_line.split("$$", 1)
     if len(split_line) > 1:
         header, comment = split_line
         return header.strip(), comment.strip()
     else:
         return split_line[0].strip(), ""
+
+def header_parser(header_line):
+    """"##LABEL=value" -> "label", value (float or str)"""
+    key, value = header_line.lstrip("##").split("=", 1)
+    return key.lower(), try_str_to_num(value)
 
 def jdx_reader(filename, transform_data=True):
     """Opens a JCAMP-DX file and returns its contents in a dictionary."""
@@ -95,25 +100,25 @@ def jdx_reader(filename, transform_data=True):
     with open(filename) as jdx_file:
         for line in jdx_file:
             header, comment = comment_stripper(line)
-            if comment:
-                jdx_dict["comments"] += comment + "\n"
-            if not header:
-                continue
-            elif header.startswith("##"):
-                # Enter header key & value into jdx_dict
-                key, value = header.lstrip("##").split("=", 1)
-                key = key.lower()
-                jdx_dict[key] = try_str_to_num(value)
-                if key in DATA_START:
-                    data_start = key
-            elif not data_start:
-                jdx_dict[key] += "\n" + header
-            elif data_start:
-                # Store all the data lines for later processing
-                data_lines.append(header)
+            if not data_start:
+                if comment:
+                    jdx_dict["comments"] += comment + "\n"
+                if not header:
+                    continue
+                elif header.startswith("##"):
+                    # Enter header key & value into jdx_dict
+                    key, value = header_parser(header)
+                    jdx_dict[key] = value
+                    if key in DATA_START_HEADERS:
+                        data_start = key
+                else:
+                    jdx_dict[key] += "\n" + header
             else:
-                # Just in case, so that I know the code is failing
-                raise JdxParserError("Uncaught case while parsing JDX file.")
+                # Store all the data lines for later processing
+                if header.lower() != "##end=":
+                    data_lines.append(header)
+                else:
+                    break
 
     data_type = DATATYPE_MAP[jdx_dict[data_start]]
     jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
