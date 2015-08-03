@@ -84,7 +84,7 @@ def comment_stripper(jdx_line):
 
 def header_parser(header_line):
     """"##LABEL=value" -> "label", value (float or str)"""
-    key, value = header_line.lstrip("##").split("=", 1)
+    key, value = header_line.lstrip("#").split("=", 1)
     return key.lower(), try_str_to_num(value)
 
 def jdx_reader(jdx_file, transform_data=True):
@@ -97,31 +97,40 @@ def jdx_reader(jdx_file, transform_data=True):
 
     for line in jdx_file:
         header, comment = comment_stripper(line)
-        if not data_start:
-            if comment:
-                jdx_dict["comments"] += comment + "\n"
-            if not header:
-                continue
-            elif header.startswith("##"):
-                # Enter header key & value into jdx_dict
-                key, value = header_parser(header)
-                jdx_dict[key] = value
-                if key in DATA_START_HEADERS:
-                    data_start = key
-            else:
-                jdx_dict[key] += "\n" + header
+        if comment:
+            jdx_dict["comments"] += comment + "\n"
+        if not header:
+            continue
         else:
-            # Store all the data lines for later processing
-            if header.lower() != "##end=":
-                data_lines.append(header)
+            if not data_start:
+                if header.startswith("##"):
+                    key, value = header_parser(header)
+                    jdx_dict[key] = value
+                    if key in DATA_START_HEADERS:
+                        data_start = key
+                else:
+                    if isinstance(jdx_dict[key], str):
+                        jdx_dict[key] += "\n" + header
+                    else:
+                        jdx_dict[key] = str(jdx_dict[key]) + "\n" + header
             else:
-                break
+                # Store all the data lines for later processing
+                if header.lower() != "##end=":
+                    data_lines.append(header)
+                else:
+                    break
+    else:
+        raise JdxParserError("No data start point identified, "
+                             "or JDX file has no ##END=")
 
     data_type = DATATYPE_MAP[jdx_dict[data_start]]
-    jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
+    if data_lines:
+        jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
+    else:
+        raise JdxParserError("JDX file contains no data")
     if transform_data:
+        # Multiply x, y by xfactor, yfactor if asked
         jdx_dict.update(data_transformer(**jdx_dict))
-    sanity_check(jdx_dict)
 
     return jdx_dict
 
