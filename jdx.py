@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 # Author: Lizhou Sha <slz@mit.edu>
 
 from __future__ import division, print_function
