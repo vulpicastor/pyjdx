@@ -87,38 +87,35 @@ def header_parser(header_line):
     key, value = header_line.lstrip("##").split("=", 1)
     return key.lower(), try_str_to_num(value)
 
-def jdx_reader(filename, transform_data=True):
-    """Opens a JCAMP-DX file and returns its contents in a dictionary."""
+def jdx_reader(jdx_file, transform_data=True):
+    """Iterable of JCAMP-DX file lines -> jdx_dict"""
 
     # Initialization
     jdx_dict = {"comments":""}
-    x = []
-    y = []
     data_start = ""
     data_lines = []
 
-    with open(filename) as jdx_file:
-        for line in jdx_file:
-            header, comment = comment_stripper(line)
-            if not data_start:
-                if comment:
-                    jdx_dict["comments"] += comment + "\n"
-                if not header:
-                    continue
-                elif header.startswith("##"):
-                    # Enter header key & value into jdx_dict
-                    key, value = header_parser(header)
-                    jdx_dict[key] = value
-                    if key in DATA_START_HEADERS:
-                        data_start = key
-                else:
-                    jdx_dict[key] += "\n" + header
+    for line in jdx_file:
+        header, comment = comment_stripper(line)
+        if not data_start:
+            if comment:
+                jdx_dict["comments"] += comment + "\n"
+            if not header:
+                continue
+            elif header.startswith("##"):
+                # Enter header key & value into jdx_dict
+                key, value = header_parser(header)
+                jdx_dict[key] = value
+                if key in DATA_START_HEADERS:
+                    data_start = key
             else:
-                # Store all the data lines for later processing
-                if header.lower() != "##end=":
-                    data_lines.append(header)
-                else:
-                    break
+                jdx_dict[key] += "\n" + header
+        else:
+            # Store all the data lines for later processing
+            if header.lower() != "##end=":
+                data_lines.append(header)
+            else:
+                break
 
     data_type = DATATYPE_MAP[jdx_dict[data_start]]
     jdx_dict.update(data_parser(data_lines, data_type, **jdx_dict))
@@ -127,3 +124,8 @@ def jdx_reader(filename, transform_data=True):
     sanity_check(jdx_dict)
 
     return jdx_dict
+
+def jdx_file_reader(filename, transform_data=True):
+    """Opens a JCAMP-DX file and returns its contents in a dictionary."""
+    with open(filename) as f:
+        return jdx_reader(f, transform_data)
