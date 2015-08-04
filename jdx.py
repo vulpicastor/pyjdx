@@ -151,33 +151,60 @@ def jdx_file_reader(filename, transform_data=True):
     with open(filename) as f:
         return jdx_reader(f, transform_data)
 
+def change_wave_unit(wave):
+    """
+    Wavenumber (1/cm) -> wavelength (micrometer)
+    Wavelength (micrometer) -> wavenumber (1/cm)
+    """
+    return 1e4 / wave
+
 class JdxFile(object):
 
     default_labels = ["title", "cas registry no", "x", "y", "xunits", "yunits"]
+    # Caveat: the strange "absorption coefficient" units (micromol/mol)-1m-1
+    # won't be properly handled until the path length and concentration info
+    # can be properly handled.
+    units = {"wn": {"1/cm", "cm-1", "cm^-1"},
+             "wl": {"micron", "micrometer"},
+             "absorb": {"absorbance", "(micromol/mol)-1m-1 (base 10)", "ppm-1 m-1 (base 10)"},
+             "trans": {"transmittance"}}
 
-    def __init__(filename):
+    def __init__(self, filename):
         jdx_data= jdx_file_reader(filename, True)
         self.title = jdx_data["title"]
+        # CAS registry no. is not mandatory, so it may not be in the file.
         self.cas = _try_getitem(jdx_data, "cas registry no")
         self.x, self.y = jdx_data["x"], jdx_data["y"]
-        self.xunits, self.yunits = jdx_data["xunits"], jdx_data["yunits"]
-        for key in default_labels:
+        self.xunits = jdx_data["xunits"].lower()
+        self.yunits = jdx_data["yunits"].lower()
+        for key in JdxFile.default_labels:
             _try_delitem(jdx_data, key)
         self._data = jdx_data
 
-    def wavenumber():
+    def wn(self):
         """-> self.x in wavenumber (1/cm)"""
-        pass
+        if self.xunits in JdxFile.units["wn"]:
+            return np.copy(self.x)
+        elif self.xunits in JdxFile.units["wl"]:
+            return change_wave_unit(self.x)
 
-    def wavelength():
+    def wl(self):
         """-> self.x in wavelength (micrometer)"""
-        pass
+        if self.xunits in JdxFile.units["wl"]:
+            return np.copy(self.x)
+        elif self.xunits in JdxFile.units["wn"]:
+            return change_wave_unit(self.x)
 
-    def absorbance():
+    def absorb(self):
         """-> self.y in absorbance (-log10(I/I_0))"""
-        pass
+        if self.yunits in JdxFile.units["absorb"]:
+            return np.copy(self.y)
+        elif self.yunits in JdxFile.units["trans"]:
+            return - np.log10(self.y)
 
-    def transmittance():
+    def trans(self):
         """-> self.y in transmittance (I/I_0)"""
-        pass
-
+        if self.yunits in JdxFile.units["trans"]:
+            return np.copy(self.y)
+        elif self.yunits in JdxFile.units["absorb"]:
+            return 10 ** (-self.y)
