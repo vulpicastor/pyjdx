@@ -27,6 +27,20 @@ def try_str_to_num(string):
     except:
         raise TypeError("Unknown error while trying to convert string into number.")
 
+def _try_getitem(dictionary, key):
+    if key in dictionary:
+        return dictionary[key]
+    else:
+        return None
+
+def _try_delitem(dictionary, key):
+    try:
+        del dictionary[key]
+    except KeyError:
+        return False
+    else:
+        return True
+
 def deltax(firstx, lastx, npoints, **kwargs):
     """-> (lastx - firstx) / (npoints - 1)"""
     return (lastx - firstx) / (npoints - 1)
@@ -136,3 +150,34 @@ def jdx_file_reader(filename, transform_data=True):
     """Opens a JCAMP-DX file and returns its contents in a dictionary."""
     with open(filename) as f:
         return jdx_reader(f, transform_data)
+
+class JdxFile(object):
+
+    default_labels = ["title", "cas registry no", "x", "y", "xunits", "yunits"]
+
+    def __init__(filename):
+        jdx_data= jdx_file_reader(filename, True)
+        self.title = jdx_data["title"]
+        self.cas = _try_getitem(jdx_data, "cas registry no")
+        self.x, self.y = jdx_data["x"], jdx_data["y"]
+        self.xunits, self.yunits = jdx_data["xunits"], jdx_data["yunits"]
+        for key in default_labels:
+            _try_delitem(jdx_data, key)
+        self._data = jdx_data
+
+    def wavenumber():
+        """-> self.x in wavenumber (1/cm)"""
+        pass
+
+    def wavelength():
+        """-> self.x in wavelength (micrometer)"""
+        pass
+
+    def absorbance():
+        """-> self.y in absorbance (-log10(I/I_0))"""
+        pass
+
+    def transmittance():
+        """-> self.y in transmittance (I/I_0)"""
+        pass
+
