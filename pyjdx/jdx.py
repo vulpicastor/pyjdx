@@ -165,7 +165,7 @@ class JdxFile(object):
     # won't be properly handled until the path length and concentration info
     # can be properly handled.
     units = {"wn": {"1/cm", "cm-1", "cm^-1"},
-             "wl": {"micron", "micrometer"},
+             "wl": {"micrometers"},
              "absorb": {"absorbance", "(micromol/mol)-1m-1 (base 10)", "ppm-1 m-1 (base 10)"},
              "trans": {"transmittance"}}
 
