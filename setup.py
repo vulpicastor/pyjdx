@@ -9,7 +9,7 @@ with open("README.rst") as f:
 
 setup(
     name="pyjdx",
-    version="0.0.0",
+    version="0.0.1",
 
     description="A reader of JCAMP-DX spectral data files",
     long_description=readme,
